@@ -14,18 +14,22 @@ import org.jboss.resteasy.util.InputStreamToByteArray;
 import org.jboss.resteasy.util.ReadFromStream;
 import org.jboss.resteasy.util.Types;
 
+import javax.json.JsonArray;
+import javax.json.JsonObject;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.Providers;
 import javax.ws.rs.ext.ReaderInterceptor;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -47,6 +51,13 @@ public abstract class ClientResponse extends BuiltResponse
    public void setHeaders(MultivaluedMap<String, String> headers)
    {
       this.metadata = new Headers<Object>();
+
+      List list = new ArrayList<>();
+      list.add("test");
+
+      headers.put("PPropTEst",list);
+
+
       this.metadata.putAll((Map) headers);
    }
 
@@ -206,10 +217,29 @@ public abstract class ClientResponse extends BuiltResponse
 
          ReaderInterceptor[] readerInterceptors = configuration.getReaderInterceptors(null, null);
 
-         final Object finalObj = new ClientReaderInterceptorContext(readerInterceptors, configuration.getProviderFactory(), useType,
+          final Object finalObj = new ClientReaderInterceptorContext(readerInterceptors, configuration.getProviderFactory(), useType,
                  useGeneric, annotations, media, getStringHeaders(), is, properties)
                  .proceed();
+
          obj = finalObj;
+
+         Map<String,String> mapC = new HashMap<>();
+         if(properties.containsKey("MP_CLIENT_CONTAINER_HEADERS")){
+            for (Map.Entry<String,Object> entry : properties.entrySet()){
+               if(entry.getKey().equals("MP_CLIENT_CONTAINER_HEADERS")){
+
+                  Map<String,String> map = (Map<String, String>) entry.getValue();
+                  Map<String,Map<String,String>> imap = (Map<String, Map<String,String>>) finalObj;
+                  Map<String,String> fmap = imap.get("IncomingRequestHeaders");
+                  Map<String,String> upmap = new HashMap<>(fmap);
+                  map.entrySet().stream().filter(x -> !fmap.containsKey(x.getKey())).forEach(x -> mapC.put(x.getKey(), x.getValue()));
+                  upmap.putAll(mapC);
+
+               }
+            }
+
+         }
+
 
          if (isMarshalledEntity)
          {
